@@ -42,31 +42,12 @@ end
 print("[DJ HUB] ✅ Game ID verified: The Forge ("..currentGameId..")")
 
 -- ================================================================
--- NO KEY WEEKEND CHECK
--- ================================================================
-local function isNoKeyWeekend()
-    local now = os.time()
-    local startTime = os.time({year=2025, month=12, day=6, hour=22, min=0, sec=0})
-    local endTime = os.time({year=2025, month=12, day=8, hour=23, min=0, sec=0})
-    return now >= startTime and now <= endTime
-end
-
-local NO_KEY_ACTIVE = isNoKeyWeekend()
-
-if NO_KEY_ACTIVE then
-    print("[DJ HUB] 🎉 NO KEY WEEKEND ACTIVE! (Until Monday)")
-else
-    print("[DJ HUB] Key system required")
-end
-
--- ================================================================
 -- CONFIG
 -- ================================================================
 local Config = {
     api = "ef8c4422-f7d4-4b3c-ab4e-c3363317dba9",
     provider = "Keys",
-    service = "DJHUB_Test",
-    noKeyWeekend = NO_KEY_ACTIVE
+    service = "DJHUB_Test"
 }
 
 -- ================================================================
@@ -323,39 +304,24 @@ local function onKeyVerified()
         end
     end
     
-    local welcomeMsg = "The Forge Script ready!"
-    if NO_KEY_ACTIVE then
-        welcomeMsg = "🎉 NO KEY WEEKEND!\nFree access until Monday!"
-    end
-    
     Rayfield:Notify({
         Title = "DJ HUB Loaded!",
-        Content = welcomeMsg,
+        Content = "The Forge Script ready!",
         Duration = 6
     })
     
     print("[DJ HUB] ✅ The Forge Script loaded successfully!")
 end
 
-if NO_KEY_ACTIVE then
-    print("[DJ HUB] 🎉 No Key Weekend - Skipping key verification")
-    Rayfield:Notify({
-        Title = "🎉 NO KEY WEEKEND!",
-        Content = "Free access until Monday!\nEnjoy The Forge Script!",
-        Duration = 8
-    })
-    task.delay(1, onKeyVerified)
-else
-    local buildKey = loadEncodedModule("dj_tab_key.lua")
-    if buildKey then
-        local ok, result = pcall(buildKey, Window, Rayfield, Utils, Config, onKeyVerified)
-        if ok and result then
-            KeyTabReference = result
-        end
-    else
-        warn("[DJ HUB] Key tab failed to load")
-        onKeyVerified()
+local buildKey = loadEncodedModule("dj_tab_key.lua")
+if buildKey then
+    local ok, result = pcall(buildKey, Window, Rayfield, Utils, Config, onKeyVerified)
+    if ok and result then
+        KeyTabReference = result
     end
+else
+    warn("[DJ HUB] Key tab failed to load")
+    onKeyVerified()
 end
 
 print("[DJ HUB] The Forge Script loader complete!")
