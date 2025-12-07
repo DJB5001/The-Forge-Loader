@@ -1,0 +1,136 @@
+name: Auto-Encode Private Scripts
+
+on:
+  # Manually trigger
+  workflow_dispatch:
+  
+  # Run every 30 minutes
+  schedule:
+    - cron: '*/30 * * * *'
+  
+  # Run on push to main (optional)
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/auto-encode.yml'
+
+jobs:
+  encode-and-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: 🚪 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 🔥 Fetch & Encode All Scripts
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: |
+          set -e
+          echo "="*60
+          echo "🔥 THE FORGE - AUTO ENCODER 🔥"
+          echo "="*60
+          echo ""
+          echo "📝 Source: The-Forge (private)"
+          echo "🎯 Target: The-Forge-Loader (public)"
+          echo ""
+          
+          # Create encoded directory
+          mkdir -p encoded
+          
+          # All files to encode
+          FILES=(
+            "loader.lua"
+            "main.lua"
+            "dj_utils.lua"
+            "dj_overlay.lua"
+            "dj_ui_base.lua"
+            "dj_ui_wrapper.lua"
+            "dj_tab_key.lua"
+            "dj_tab_ingame.lua"
+            "dj_tab_mining.lua"
+            "dj_tab_monster.lua"
+            "dj_tab_minigame.lua"
+            "dj_tab_extras.lua"
+            "dj_tab_misc.lua"
+          )
+          
+          SUCCESS_COUNT=0
+          FAILED_COUNT=0
+          TOTAL=${#FILES[@]}
+          
+          # Fetch and encode each file
+          for i in "${!FILES[@]}"; do
+            FILE="${FILES[$i]}"
+            NUM=$((i+1))
+            echo "[$NUM/$TOTAL] 🔄 Processing: $FILE"
+            
+            # Fetch from private repo (The-Forge)
+            if curl -f -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github.v3.raw" \
+              "https://api.github.com/repos/DJB5001/The-Forge/contents/$FILE?ref=main" \
+              -o "temp_$FILE" 2>/dev/null; then
+              
+              ORIGINAL_SIZE=$(wc -c < "temp_$FILE")
+              echo "      ✅ Downloaded: $ORIGINAL_SIZE bytes"
+              
+              # Encode to base64
+              base64 -w 0 "temp_$FILE" > "encoded/${FILE}.b64"
+              ENCODED_SIZE=$(wc -c < "encoded/${FILE}.b64")
+              echo "      🔒 Encoded: $ENCODED_SIZE bytes (base64)"
+              echo "      ✅ Saved: encoded/${FILE}.b64"
+              
+              rm "temp_$FILE"
+              SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+            else
+              echo "      ❌ Failed to fetch $FILE"
+              FAILED_COUNT=$((FAILED_COUNT+1))
+            fi
+            echo ""
+          done
+          
+          # Create index file
+          echo "📚 Creating file index..."
+          ls -1 encoded/*.b64 | sed 's|encoded/||' > encoded/index.txt
+          echo "✅ Index created: encoded/index.txt"
+          echo ""
+          
+          # Summary
+          echo "="*60
+          echo "✅ Success: $SUCCESS_COUNT/$TOTAL files"
+          if [ $FAILED_COUNT -gt 0 ]; then
+            echo "❌ Failed: $FAILED_COUNT/$TOTAL files"
+          fi
+          echo "="*60
+          echo ""
+          echo "🚀 Loader URL:"
+          echo "https://raw.githubusercontent.com/DJB5001/The-Forge-Loader/main/loader.lua"
+          echo ""
+      
+      - name: 📤 Commit & Push Changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add encoded/
+          
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes detected - skipping commit"
+          else
+            TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "Auto-update: Encode scripts [$TIMESTAMP]"
+            git push origin main
+            echo "✅ Changes pushed successfully!"
+          fi
+      
+      - name: 📊 Summary
+        if: always()
+        run: |
+          echo "🎉 Workflow completed!"
+          echo "🔗 Check encoded files: https://github.com/DJB5001/The-Forge-Loader/tree/main/encoded"
