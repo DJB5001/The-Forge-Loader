@@ -47,7 +47,7 @@ print("[DJ HUB] ✅ Game ID verified: The Forge ("..currentGameId..")")
 local Config = {
     api = "ef8c4422-f7d4-4b3c-ab4e-c3363317dba9",
     provider = "Keys",
-    service = "DJHUB_Test"
+    service = "RaiseAnimal_DJHUB"
 }
 
 -- ================================================================
