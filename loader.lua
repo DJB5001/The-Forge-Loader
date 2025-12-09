@@ -13,9 +13,7 @@ local ALLOWED_GAME_IDS = {
     129009554587176
 }
 
--- ================================================================
--- GAME CHECK
--- ================================================================
+
 local currentGameId = game.PlaceId
 local isAllowed = false
 
